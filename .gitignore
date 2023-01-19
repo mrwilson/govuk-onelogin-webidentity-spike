@@ -1,0 +1,6 @@
+*.pem
+node_modules/
+config.json
+package-lock.json
+terraform.tfstate*
+.terraform.lock.hcl

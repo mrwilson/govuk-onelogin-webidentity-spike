@@ -1,0 +1,8 @@
+{
+  "aws_role_to_assume": "",
+  "aws_dynamo_table": "",
+  "one_login_signing_private_key": "",
+  "one_login_url": "",
+  "one_login_client_id": "",
+  "one_login_ssl_thumbprint": ""
+}
