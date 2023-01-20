@@ -2,6 +2,7 @@ locals {
   config = jsondecode(file("${path.module}/config.json"))
 }
 
+// The GOV.UK One Login OIDC-compliant identity provider
 resource "aws_iam_openid_connect_provider" "identity_provider" {
   url             = local.config["one_login_url"]
   client_id_list  = [local.config["one_login_client_id"]]
@@ -29,10 +30,15 @@ resource "aws_iam_role" "web_identity_role" {
       Action = "sts:AssumeRoleWithWebIdentity"
       Effect = "Allow"
       Principal = {
+        // Only users who have authenticated with the federated
+        // identity provider (GOV.UK One Login) can assume this role
         Federated = aws_iam_openid_connect_provider.identity_provider.arn
       }
       Condition = {
         StringEquals = {
+          // Restrict the `aud` (audience) claim to the client id
+          // corresponding to this specific Relying Party (RP)
+          // to prevent ID tokens from other RPs being passed in
           "${aws_iam_openid_connect_provider.identity_provider.url}:aud" : local.config["one_login_client_id"]
         }
       }
@@ -50,6 +56,12 @@ resource "aws_iam_role" "web_identity_role" {
         Resource = aws_dynamodb_table.webidentity-test-table.arn
         Condition = {
           "ForAllValues:StringEquals" = {
+            // dynambodb:PutItem can only be executed against rows
+            // with the "leading key" (hash key) equal to the `sub`
+            // claim on the ID token used to generate these temporary
+            // credentials with STS.
+            //
+            // Otherwise, the call fails with a permission denied error.
             "dynamodb:LeadingKeys" = "$${${aws_iam_openid_connect_provider.identity_provider.url}:sub}"
           }
       } }]
