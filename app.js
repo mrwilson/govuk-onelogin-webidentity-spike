@@ -16,6 +16,17 @@ const fs = require("fs");
 // Loading config from JSON file
 const config = JSON.parse(fs.readFileSync("config.json", "utf8"));
 
+function content(response) {
+  return `<html lang="en">
+        <head>
+            <title>Demo Page</title>
+        </head>
+        <body>
+            <p>Hello, your favourite food is ${response.Item.FavouriteFood.S}!</p>
+        </body>
+    </html>`;
+}
+
 module.exports.run = async function () {
   const privatekey = await jose.importPKCS8(
     fs.readFileSync(config["one_login_signing_private_key"]).toString(),
@@ -62,22 +73,21 @@ module.exports.run = async function () {
       },
     });
 
-    // The assumed role only allows modification
+    // The assumed role only allows access
     // to rows where the leading key (partition key)
     // is equal to the sub of the ID.
     //
     // This role is set up in the neighbouring Terraform file.
-    const response = await dynamo.putItem({
-      TableName: config["aws_dynamo_table"],
-      Item: {
-        UserId: { S: jose.decodeJwt(req.oidc.idToken).sub },
-        When: { S: new Date().toString() },
-      },
-    });
-
-    // All done
-    res.sendStatus(200);
+    dynamo
+      .getItem({
+        TableName: config["aws_dynamo_table"],
+        Item: {
+          UserId: { S: jose.decodeJwt(req.oidc.idToken).sub },
+        },
+      })
+      .then((response) => res.send(content(response)))
+      .catch((error) => res.send(error.message));
   });
 
-  const server = app.listen(3031);
+  app.listen(3031);
 };
