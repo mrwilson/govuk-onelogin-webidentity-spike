@@ -2,6 +2,10 @@ locals {
   config = jsondecode(file("${path.module}/config.json"))
 }
 
+provider "aws" {
+  region = "eu-west-2"
+}
+
 // The GOV.UK One Login OIDC-compliant identity provider
 resource "aws_iam_openid_connect_provider" "identity_provider" {
   url             = local.config["one_login_url"]
@@ -51,12 +55,12 @@ resource "aws_iam_role" "web_identity_role" {
       Version = "2012-10-17"
 
       Statement = [{
-        Action   = ["dynamodb:PutItem"]
+        Action   = ["dynamodb:GetItem"]
         Effect   = "Allow"
         Resource = aws_dynamodb_table.webidentity-test-table.arn
         Condition = {
           "ForAllValues:StringEquals" = {
-            // dynambodb:PutItem can only be executed against rows
+            // dynambodb:GetItem can only be executed against rows
             // with the "leading key" (hash key) equal to the `sub`
             // claim on the ID token used to generate these temporary
             // credentials with STS.
